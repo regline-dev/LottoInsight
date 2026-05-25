@@ -1,0 +1,431 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: #fef3c7;
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: #ececec;
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* ── 실제 로또 용지 색 · 레이아웃 ── */
+:root {
+  --lotto-coral: #d97272;
+  --lotto-coral-dark: #c45858;
+  --lotto-coral-light: #e88888;
+}
+
+/* 로또 용지: 폰 1장 · PC(768px~) 한 줄 5장 (A~E) */
+.lotto-slip-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .lotto-slip-board {
+    /* 5장이 화면 너비에 맞게 — min-width 없음 → 가로 스크롤 방지 */
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.4rem;
+    overflow-x: hidden;
+  }
+}
+
+/* 폰에서는 A게임만, PC에서 B~E 표시 */
+.lotto-slip-column--extra {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .lotto-slip-column--extra {
+    display: flex;
+  }
+}
+
+.lotto-slip-column {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+  /* 공·글자 크기 = 이 열(게임) 너비 기준 */
+  container-type: inline-size;
+  container-name: lotto-game;
+}
+
+/* 당첨번호 6 + + + 보너스 — 한 줄, 적당히 모음 */
+.lotto-number-row {
+  display: grid;
+  width: 95%;
+  max-width: 100%;
+  margin-inline: auto;
+  align-items: center;
+  gap: 2px;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(0.45em, auto) minmax(0, 0.72fr);
+}
+
+.lotto-ball {
+  position: relative;
+  display: flex;
+  width: 90%;
+  max-width: 90%;
+  justify-self: center;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 0.5px solid rgb(0 0 0 / 32%);
+  font-weight: 700;
+  /* 배경 그라데이션은 LottoBall 인라인 style에서 지정 */
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 16%),
+    inset 0 -5px 10px rgb(0 0 0 / 20%),
+    inset 0 1px 3px rgb(255 255 255 / 22%);
+  /* cqi = 게임 열 너비의 1% → 5열 PC에서도 공 크기 유지 */
+  font-size: clamp(0.62rem, 8cqi, 0.92rem);
+}
+
+.lotto-ball__digit {
+  position: relative;
+  z-index: 1;
+  color: #111;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.lotto-ball--bonus-size {
+  display: flex;
+  width: 88%;
+  max-width: 88%;
+  justify-self: center;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 0.5px solid rgb(0 0 0 / 32%);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  font-size: clamp(0.55rem, 7cqi, 0.85rem);
+}
+
+.lotto-number-plus {
+  padding: 0 0.06em;
+  justify-self: center;
+  font-size: clamp(0.6rem, 7cqi, 0.88rem);
+  font-weight: 700;
+  color: #444;
+  line-height: 1;
+  text-align: center;
+}
+
+/* ── 용지 본체 ── */
+.lotto-slip-paper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: #fff;
+  border: 1.5px solid var(--lotto-coral);
+  box-sizing: border-box;
+}
+
+.lotto-slip-paper--compact {
+  border-width: 1px;
+}
+
+.lotto-slip-header {
+  display: flex;
+  align-items: stretch;
+  min-height: 10px;
+  border-bottom: 1px solid var(--lotto-coral-light);
+}
+
+.lotto-slip-paper--compact .lotto-slip-header {
+  min-height: 6px;
+}
+
+.lotto-slip-header__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--lotto-coral);
+  background: #fff;
+  border-right: 1px solid var(--lotto-coral-light);
+}
+
+.lotto-slip-paper--compact .lotto-slip-header__label {
+  min-width: 0.85rem;
+  font-size: 0.45rem;
+}
+
+.lotto-slip-header__bar {
+  flex: 1;
+  background: var(--lotto-coral);
+}
+
+.lotto-slip-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.5rem 0.45rem 0.55rem;
+}
+
+.lotto-slip-paper--compact .lotto-slip-body {
+  padding: 0.35rem 0.3rem 0.4rem;
+}
+
+.lotto-slip-grid-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  /* 7열 × 7행 — 세로로 긴 그리드 */
+  aspect-ratio: 1 / 1.06;
+  min-height: 0;
+}
+
+.lotto-slip-paper--compact .lotto-slip-grid-wrap {
+  min-height: 0;
+}
+
+@media (min-width: 768px) {
+  .lotto-slip-grid-wrap {
+    min-height: 0;
+  }
+}
+
+.lotto-slip-pattern {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.lotto-slip-grid {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(0, 1.06fr));
+  gap: 0.18rem;
+}
+
+.lotto-slip-paper--compact .lotto-slip-grid {
+  gap: 0.12rem;
+}
+
+/* 번호 칸 — 모서리 bracket ┌┐└┘ (너비 살짝 줄여 세로 직사각형) */
+.lotto-mark-cell {
+  position: relative;
+  display: flex;
+  width: 85%;
+  max-width: 85%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  justify-self: center;
+  align-items: center;
+  justify-content: center;
+  color: var(--lotto-coral);
+  background:
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 28% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 1px 28%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 28% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 1px 28%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 28% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 1px
+      28% no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 28%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 1px
+      28% no-repeat;
+}
+
+.lotto-mark-cell--compact {
+  background:
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 30% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 1px 30%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 30% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 1px 30%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 30%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 1px
+      30% no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 30%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 1px
+      30% no-repeat;
+}
+
+.lotto-mark-cell__num {
+  font-size: clamp(0.62rem, 2.4vw, 0.88rem);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.lotto-mark-cell--compact .lotto-mark-cell__num {
+  font-size: clamp(0.58rem, 2.2vw, 0.8rem);
+}
+
+@media (min-width: 768px) {
+  .lotto-mark-cell__num {
+    font-size: 0.82rem;
+  }
+}
+
+/* 마킹(선택) — 패턴 선 위에 표시 */
+.lotto-mark-cell--selected {
+  z-index: 2;
+}
+
+/* bracket과 떨어진 안쪽 배경 */
+.lotto-mark-cell__fill {
+  position: absolute;
+  z-index: 0;
+  /* bracket 살짝 안쪽 — 세로 직사각형 */
+  top: 10%;
+  right: 14%;
+  bottom: 10%;
+  left: 14%;
+  background-color: var(--lotto-coral);
+}
+
+.lotto-mark-cell--compact .lotto-mark-cell__fill {
+  top: 12%;
+  right: 12%;
+  bottom: 12%;
+  left: 12%;
+}
+
+.lotto-mark-cell--selected .lotto-mark-cell__num {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  font-weight: 600;
+}
+
+.lotto-mark-cell--empty {
+  background: none;
+}
+
+/* 하단 액션 버튼 — 그리드 아래 고정 */
+.lotto-slip-actions {
+  display: grid;
+  flex-shrink: 0;
+  width: 100%;
+  grid-template-columns: 1fr 1fr 1.5fr;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.lotto-slip-paper--compact .lotto-slip-actions {
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+}
+
+.lotto-slip-btn {
+  position: relative;
+  min-height: 2rem;
+  padding: 0.25rem 0.15rem;
+  border: none;
+  white-space: nowrap;
+  background:
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 22% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 1px 22%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 22% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 1px 22%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 22%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 1px
+      22% no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 22%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 1px
+      22% no-repeat;
+  color: var(--lotto-coral);
+  font-size: clamp(0.55rem, 2vw, 0.72rem);
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #fff;
+}
+
+.lotto-slip-btn--compact {
+  min-height: 1.75rem;
+  font-size: clamp(0.5rem, 1.8vw, 0.65rem);
+  background:
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 24% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 1px 24%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 24% 1px
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right top / 1px 24%
+      no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 24%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) left bottom / 1px
+      24% no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 24%
+      1px no-repeat,
+    linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 1px
+      24% no-repeat;
+  background-color: #fff;
+}
+
+.lotto-slip-btn:hover {
+  color: var(--lotto-coral-dark);
+}
+
+.lotto-slip-btn--wide {
+  letter-spacing: -0.04em;
+}
+
+@media (min-width: 768px) {
+  .lotto-slip-header__label {
+    min-width: 1.5rem;
+    font-size: 0.75rem;
+  }
+
+  .lotto-slip-btn {
+    min-height: 2.2rem;
+    font-size: 0.7rem;
+  }
+}
