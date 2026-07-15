@@ -4,6 +4,7 @@ import type {
   CooccurrenceExtremes,
   CooccurrenceRate,
 } from "@/lib/lotto/cooccurrence.types";
+import type { LottoDraw } from "@/lib/lotto/types";
 
 export type { CooccurrenceExtremes, CooccurrenceRate } from "@/lib/lotto/cooccurrence.types";
 
@@ -119,4 +120,17 @@ export function getCooccurrenceSummaries(
   return baseNumbers.map((baseNumber) =>
     getCooccurrenceExtremes(baseNumber, draws)
   );
+}
+
+/** 다음 주 세트별 동시출현 요약 — 빈 세트는 [] */
+export function getCooccurrenceSummariesForDrawSets(
+  drawSets: LottoDraw[],
+  draws: LottoDrawRecord[]
+): CooccurrenceExtremes[][] {
+  return drawSets.map((draw) => {
+    if (draw.mainNumbers.length === 0) {
+      return [];
+    }
+    return getCooccurrenceSummaries(draw.mainNumbers, draws);
+  });
 }

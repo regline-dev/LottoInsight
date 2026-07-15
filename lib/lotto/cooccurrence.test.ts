@@ -5,7 +5,9 @@ import {
   getCooccurrenceExtremes,
   getCooccurrenceRatesForBase,
   getCooccurrenceSummaries,
+  getCooccurrenceSummariesForDrawSets,
 } from "@/lib/lotto/cooccurrence";
+import type { LottoDraw } from "@/lib/lotto/types";
 
 const makeDraw = (
   drwNo: number,
@@ -95,6 +97,40 @@ describe("getCooccurrenceSummaries", () => {
     expect(summaries).toHaveLength(2);
     expect(summaries[0].baseNumber).toBe(8);
     expect(summaries[1].baseNumber).toBe(9);
+  });
+});
+
+describe("getCooccurrenceSummariesForDrawSets", () => {
+  it("다음 주 세트마다 동시출현 요약 배열을 반환", () => {
+    const drawSets: LottoDraw[] = [
+      { mainNumbers: [8, 9, 19, 25, 41, 42], bonusNumber: 1 },
+      { mainNumbers: [1, 2, 3, 4, 5, 6], bonusNumber: 7 },
+    ];
+
+    const summariesBySet = getCooccurrenceSummariesForDrawSets(
+      drawSets,
+      fixtureDraws
+    );
+
+    expect(summariesBySet).toHaveLength(2);
+    expect(summariesBySet[0]).toHaveLength(6);
+    expect(summariesBySet[0][0].baseNumber).toBe(8);
+    expect(summariesBySet[1][0].baseNumber).toBe(1);
+  });
+
+  it("번호가 비어 있으면 해당 세트는 빈 요약", () => {
+    const drawSets: LottoDraw[] = [
+      { mainNumbers: [], bonusNumber: 0 },
+      { mainNumbers: [8, 9, 19, 25, 41, 42], bonusNumber: 1 },
+    ];
+
+    const summariesBySet = getCooccurrenceSummariesForDrawSets(
+      drawSets,
+      fixtureDraws
+    );
+
+    expect(summariesBySet[0]).toEqual([]);
+    expect(summariesBySet[1]).toHaveLength(6);
   });
 });
 

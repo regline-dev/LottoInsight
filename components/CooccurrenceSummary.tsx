@@ -4,15 +4,18 @@ import type { CooccurrenceExtremes } from "@/lib/lotto/cooccurrence.types";
 
 type CooccurrenceSummaryProps = {
   summaries: CooccurrenceExtremes[];
+  /** 기본: 동시 출현 (전 회차) */
+  title?: string;
 };
 
 /** 기준 번호별 동반 출현 1위·꼴찌 — 6칸 고정 테이블 */
 export default function CooccurrenceSummary({
   summaries,
+  title = "동시 출현 (전 회차)",
 }: CooccurrenceSummaryProps) {
   return (
     <div className="cooccurrence-summary" aria-label="번호 동시 출현 요약">
-      <p className="cooccurrence-summary__title">동시 출현 (전 회차)</p>
+      <p className="cooccurrence-summary__title">{title}</p>
 
       <table className="cooccurrence-summary__table">
         <colgroup>

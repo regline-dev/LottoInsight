@@ -1,18 +1,32 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import CooccurrenceSummary from "@/components/CooccurrenceSummary";
 import GenerateButton from "@/components/GenerateButton";
 import LottoSlip from "@/components/LottoSlip";
+import MyNumberModal from "@/components/MyNumberModal";
 import NumberResult from "@/components/NumberResult";
 import PastDrawColumn from "@/components/PastDrawColumn";
 import { LOTTO_GAME_COUNT, LOTTO_GAME_LABELS } from "@/lib/constants";
+import { getCooccurrenceSummariesForDrawSets } from "@/lib/lotto/cooccurrence";
 import { getRecentDrawsFromFile } from "@/lib/lotto/draws";
-import { getCooccurrenceSummaries } from "@/lib/lotto/cooccurrence";
 import { generateLottoDraw, generateLottoDrawSets } from "@/lib/lotto/random";
+import { applySlipNumberTap } from "@/lib/lotto/slipSelect";
+import {
+  canRegisterMyNumbers,
+  hasSavedMyNumber,
+  readMyNumbersFromStorage,
+  removeMyNumberFromStore,
+  saveMyNumberToStore,
+  writeMyNumbersToStorage,
+  type MyNumbersStore,
+} from "@/lib/lotto/myNumbers";
 import type { LottoDrawsFile } from "@/lib/lotto/sync";
 import { EMPTY_LOTTO_DRAW, type LottoDraw } from "@/lib/lotto/types";
 
 const PAST_DRAW_COUNT = 5;
+const NEXT_WEEK_GUIDE_TEXT =
+  "번호변경 : 각 세트에 선택된 번호를 먼저 선택(하늘색) 후 원하시는 번호로 교체. 6개 이하인 경우 원하는 번호 선택";
 
 type LottoAppProps = {
   drawsFile: LottoDrawsFile;
@@ -20,6 +34,14 @@ type LottoAppProps = {
 
 export default function LottoApp({ drawsFile }: LottoAppProps) {
   const [drawSets, setDrawSets] = useState<LottoDraw[]>([]);
+  const [pendingReplaceByGame, setPendingReplaceByGame] = useState<
+    Array<number | null>
+  >([]);
+  const [myNumbersStore, setMyNumbersStore] = useState<MyNumbersStore>({});
+  /** 나의번호 모달이 열린 게임 인덱스 — null이면 닫힘 */
+  const [myNumberModalGameIndex, setMyNumberModalGameIndex] = useState<
+    number | null
+  >(null);
   const [isWideScreen, setIsWideScreen] = useState(false);
   const [isScriptStuck, setIsScriptStuck] = useState(false);
 
@@ -28,20 +50,27 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
     [drawsFile]
   );
 
-  const latestCooccurrenceSummaries = useMemo(() => {
-    const latestPastDraw = pastDrawRecords[0];
-    if (!latestPastDraw) {
-      return undefined;
-    }
-    return getCooccurrenceSummaries(
-      latestPastDraw.mainNumbers,
-      drawsFile.draws
-    );
-  }, [pastDrawRecords, drawsFile.draws]);
-
   useEffect(() => {
     setDrawSets(generateLottoDrawSets());
+    setPendingReplaceByGame(Array.from({ length: LOTTO_GAME_COUNT }, () => null));
   }, []);
+
+  useEffect(() => {
+    try {
+      setMyNumbersStore(readMyNumbersFromStorage(window.localStorage));
+    } catch {
+      setMyNumbersStore({});
+    }
+  }, []);
+
+  const nextWeekCooccurrenceBySet = useMemo(
+    () =>
+      getCooccurrenceSummariesForDrawSets(
+        drawSets.slice(0, LOTTO_GAME_COUNT),
+        drawsFile.draws
+      ),
+    [drawSets, drawsFile.draws]
+  );
 
   useEffect(() => {
     const timerId = window.setTimeout(() => setIsScriptStuck(true), 4000);
@@ -57,25 +86,192 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
+  const clearPendingForGame = useCallback((gameIndex: number) => {
+    setPendingReplaceByGame((prev) => {
+      const next = [...prev];
+      while (next.length < LOTTO_GAME_COUNT) {
+        next.push(null);
+      }
+      next[gameIndex] = null;
+      return next;
+    });
+  }, []);
+
   const handleGenerateAll = useCallback(() => {
     setDrawSets(generateLottoDrawSets());
+    setPendingReplaceByGame(Array.from({ length: LOTTO_GAME_COUNT }, () => null));
   }, []);
 
-  const handleAutoSelectGame = useCallback((gameIndex: number) => {
-    setDrawSets((prevSets) =>
-      prevSets.map((draw, index) =>
-        index === gameIndex ? generateLottoDraw() : draw
-      )
-    );
+  const handleAutoSelectGame = useCallback(
+    (gameIndex: number) => {
+      setDrawSets((prevSets) =>
+        prevSets.map((draw, index) =>
+          index === gameIndex ? generateLottoDraw() : draw
+        )
+      );
+      clearPendingForGame(gameIndex);
+    },
+    [clearPendingForGame]
+  );
+
+  const handleResetGame = useCallback(
+    (gameIndex: number) => {
+      setDrawSets((prevSets) =>
+        prevSets.map((draw, index) =>
+          index === gameIndex ? EMPTY_LOTTO_DRAW : draw
+        )
+      );
+      clearPendingForGame(gameIndex);
+    },
+    [clearPendingForGame]
+  );
+
+  const handleNumberTap = useCallback(
+    (gameIndex: number, tappedNumber: number) => {
+      const currentDraw = drawSets[gameIndex];
+      if (!currentDraw) {
+        return;
+      }
+
+      const pending = pendingReplaceByGame[gameIndex] ?? null;
+      const result = applySlipNumberTap(
+        currentDraw.mainNumbers,
+        pending,
+        tappedNumber
+      );
+
+      setDrawSets((prevSets) =>
+        prevSets.map((draw, index) =>
+          index === gameIndex
+            ? { ...draw, mainNumbers: result.mainNumbers }
+            : draw
+        )
+      );
+
+      setPendingReplaceByGame((prevPending) => {
+        const nextPending = [...prevPending];
+        while (nextPending.length < LOTTO_GAME_COUNT) {
+          nextPending.push(null);
+        }
+        nextPending[gameIndex] = result.pendingReplaceNumber;
+        return nextPending;
+      });
+    },
+    [drawSets, pendingReplaceByGame]
+  );
+
+  const persistMyNumbersStore = useCallback((nextStore: MyNumbersStore) => {
+    setMyNumbersStore(nextStore);
+    try {
+      writeMyNumbersToStorage(window.localStorage, nextStore);
+    } catch {
+      // 사파리 시크릿 등 — 메모리 상태만 유지
+    }
   }, []);
 
-  const handleResetGame = useCallback((gameIndex: number) => {
+  const closeMyNumberModal = useCallback(() => {
+    setMyNumberModalGameIndex(null);
+  }, []);
+
+  const openMyNumberModal = useCallback((gameIndex: number) => {
+    setMyNumberModalGameIndex(gameIndex);
+  }, []);
+
+  const handleSaveMyNumber = useCallback(() => {
+    if (myNumberModalGameIndex === null) {
+      return;
+    }
+
+    const currentDraw = drawSets[myNumberModalGameIndex];
+    // 6개 미만(빈 칸 포함)이면 저장하지 않고 닫기 — alert 없음
+    if (!currentDraw || !canRegisterMyNumbers(currentDraw)) {
+      closeMyNumberModal();
+      return;
+    }
+
+    persistMyNumbersStore(
+      saveMyNumberToStore(myNumbersStore, myNumberModalGameIndex, currentDraw)
+    );
+    closeMyNumberModal();
+  }, [
+    myNumberModalGameIndex,
+    drawSets,
+    myNumbersStore,
+    persistMyNumbersStore,
+    closeMyNumberModal,
+  ]);
+
+  /** 수정하기 — 6개면 덮어쓰고, 비어 있으면 저장본 삭제 */
+  const handleUpdateMyNumber = useCallback(() => {
+    if (myNumberModalGameIndex === null) {
+      return;
+    }
+
+    const currentDraw = drawSets[myNumberModalGameIndex];
+    if (!currentDraw || !canRegisterMyNumbers(currentDraw)) {
+      persistMyNumbersStore(
+        removeMyNumberFromStore(myNumbersStore, myNumberModalGameIndex)
+      );
+      closeMyNumberModal();
+      return;
+    }
+
+    persistMyNumbersStore(
+      saveMyNumberToStore(myNumbersStore, myNumberModalGameIndex, currentDraw)
+    );
+    closeMyNumberModal();
+  }, [
+    myNumberModalGameIndex,
+    drawSets,
+    myNumbersStore,
+    persistMyNumbersStore,
+    closeMyNumberModal,
+  ]);
+
+  const handleLoadMyNumberFromModal = useCallback(() => {
+    if (myNumberModalGameIndex === null) {
+      return;
+    }
+
+    const saved = myNumbersStore[myNumberModalGameIndex];
+    if (!saved) {
+      return;
+    }
+
     setDrawSets((prevSets) =>
       prevSets.map((draw, index) =>
-        index === gameIndex ? EMPTY_LOTTO_DRAW : draw
+        index === myNumberModalGameIndex
+          ? {
+              mainNumbers: [...saved.mainNumbers],
+              bonusNumber: saved.bonusNumber,
+            }
+          : draw
       )
     );
-  }, []);
+    clearPendingForGame(myNumberModalGameIndex);
+    closeMyNumberModal();
+  }, [
+    myNumberModalGameIndex,
+    myNumbersStore,
+    clearPendingForGame,
+    closeMyNumberModal,
+  ]);
+
+  const modalSavedDraw =
+    myNumberModalGameIndex !== null &&
+    hasSavedMyNumber(myNumbersStore, myNumberModalGameIndex)
+      ? (myNumbersStore[myNumberModalGameIndex] ?? null)
+      : null;
+
+  const modalCurrentDraw =
+    myNumberModalGameIndex !== null
+      ? (drawSets[myNumberModalGameIndex] ?? EMPTY_LOTTO_DRAW)
+      : EMPTY_LOTTO_DRAW;
+
+  const modalGameLabel =
+    myNumberModalGameIndex !== null
+      ? LOTTO_GAME_LABELS[myNumberModalGameIndex]
+      : "A";
 
   const isNumbersReady = drawSets.length > 0;
 
@@ -93,9 +289,10 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
 
       {isNumbersReady ? (
         <>
-          {/* 위: 다음 주 — 랜덤 뽑기 */}
-          <section className="lotto-slip-section" aria-label="다음 주">
-            <h2 className="lotto-slip-section__title">다음 주</h2>
+          <section className="lotto-slip-section" aria-label="다음 주 번호 선택">
+            <h2 className="lotto-slip-section__title lotto-slip-section__title--guide">
+              {NEXT_WEEK_GUIDE_TEXT}
+            </h2>
             <div className="lotto-slip-board">
               {drawSets.slice(0, LOTTO_GAME_COUNT).map((draw, gameIndex) => {
                 const gameLabel = LOTTO_GAME_LABELS[gameIndex];
@@ -113,9 +310,16 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
                     <LottoSlip
                       gameLabel={gameLabel}
                       selectedNumbers={draw.mainNumbers}
+                      pendingReplaceNumber={
+                        pendingReplaceByGame[gameIndex] ?? null
+                      }
                       compact={useCompactLayout}
                       onReset={() => handleResetGame(gameIndex)}
                       onAutoSelect={() => handleAutoSelectGame(gameIndex)}
+                      onNumberTap={(number) =>
+                        handleNumberTap(gameIndex, number)
+                      }
+                      onRegisterMyNumber={() => openMyNumberModal(gameIndex)}
                     />
                   </div>
                 );
@@ -124,7 +328,34 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
             <GenerateButton onClick={handleGenerateAll} />
           </section>
 
-          {/* 아래: 지난 5회차 당첨 — 읽기 전용 */}
+          <section
+            className="lotto-slip-section lotto-slip-section--cooccurrence"
+            aria-label="다음 주 동시 출현"
+          >
+            <div className="lotto-slip-board">
+              {nextWeekCooccurrenceBySet.map((summaries, gameIndex) => {
+                const gameLabel = LOTTO_GAME_LABELS[gameIndex];
+                const isExtraGame = gameIndex > 0;
+
+                return (
+                  <div
+                    key={`cooccurrence-${gameLabel}`}
+                    className={`lotto-slip-column ${
+                      isExtraGame ? "lotto-slip-column--extra" : ""
+                    }`}
+                  >
+                    {summaries.length > 0 ? (
+                      <CooccurrenceSummary
+                        summaries={summaries}
+                        title={`동시 출현 · ${gameLabel}`}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           {pastDrawRecords.length > 0 && (
             <section
               className="lotto-slip-section lotto-slip-section--past"
@@ -138,9 +369,6 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
                     gameLabel={LOTTO_GAME_LABELS[gameIndex]}
                     compact={gameIndex > 0 && !isWideScreen}
                     isExtraGame={gameIndex > 0}
-                    cooccurrenceSummaries={
-                      gameIndex === 0 ? latestCooccurrenceSummaries : undefined
-                    }
                   />
                 ))}
               </div>
@@ -165,6 +393,17 @@ export default function LottoApp({ drawsFile }: LottoAppProps) {
       <p className="text-center text-xs text-neutral-400">
         당첨 보장 없음 · 재미로만
       </p>
+
+      <MyNumberModal
+        open={myNumberModalGameIndex !== null}
+        gameLabel={modalGameLabel}
+        savedDraw={modalSavedDraw}
+        currentDraw={modalCurrentDraw}
+        onClose={closeMyNumberModal}
+        onSave={handleSaveMyNumber}
+        onLoad={handleLoadMyNumberFromModal}
+        onUpdate={handleUpdateMyNumber}
+      />
     </main>
   );
 }

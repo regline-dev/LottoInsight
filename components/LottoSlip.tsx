@@ -7,31 +7,66 @@ import { buildPatternPoints, getNumberAtCell } from "@/lib/lotto/grid";
 
 type LottoSlipProps = {
   selectedNumbers: number[];
+  /** 6개일 때 교체 대기 번호 (하늘색) */
+  pendingReplaceNumber?: number | null;
   gameLabel?: string;
   compact?: boolean;
   /** true — 초기화·자동선택 등 버튼 숨김 (과거 당첨용) */
   readonly?: boolean;
   onReset?: () => void;
   onAutoSelect?: () => void;
+  onNumberTap?: (number: number) => void;
+  onRegisterMyNumber?: () => void;
 };
 
 /** 번호 칸 — 실제 용지처럼 모서리 bracket */
 function LottoMarkCell({
   number,
   isSelected,
+  isPendingReplace,
   compact,
+  interactive,
+  onTap,
 }: {
   number: number;
   isSelected: boolean;
+  isPendingReplace: boolean;
   compact: boolean;
+  interactive: boolean;
+  onTap?: (number: number) => void;
 }) {
+  const cellClassName = [
+    "lotto-mark-cell",
+    compact ? "lotto-mark-cell--compact" : "",
+    isSelected ? "lotto-mark-cell--selected" : "",
+    isPendingReplace ? "lotto-mark-cell--pending" : "",
+    interactive ? "lotto-mark-cell--interactive" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const label = isPendingReplace
+    ? `번호 ${number} 교체 대기`
+    : `번호 ${number}${isSelected ? " 선택됨" : ""}`;
+
+  if (interactive) {
+    return (
+      <button
+        type="button"
+        className={cellClassName}
+        aria-label={label}
+        onClick={() => onTap?.(number)}
+      >
+        {(isSelected || isPendingReplace) && (
+          <span className="lotto-mark-cell__fill" aria-hidden />
+        )}
+        <span className="lotto-mark-cell__num">{number}</span>
+      </button>
+    );
+  }
+
   return (
-    <div
-      className={`lotto-mark-cell ${compact ? "lotto-mark-cell--compact" : ""} ${
-        isSelected ? "lotto-mark-cell--selected" : ""
-      }`}
-      aria-label={`번호 ${number}${isSelected ? " 선택됨" : ""}`}
-    >
+    <div className={cellClassName} aria-label={label}>
       {isSelected && <span className="lotto-mark-cell__fill" aria-hidden />}
       <span className="lotto-mark-cell__num">{number}</span>
     </div>
@@ -65,14 +100,18 @@ function SlipActionButton({
 
 export default function LottoSlip({
   selectedNumbers,
+  pendingReplaceNumber = null,
   gameLabel,
   compact = false,
   readonly = false,
   onReset,
   onAutoSelect,
+  onNumberTap,
+  onRegisterMyNumber,
 }: LottoSlipProps) {
   const selectedNumberSet = new Set(selectedNumbers);
   const patternPoints = buildPatternPoints(selectedNumbers);
+  const interactive = !readonly && Boolean(onNumberTap);
 
   return (
     <div
@@ -80,7 +119,7 @@ export default function LottoSlip({
         readonly ? "lotto-slip-paper--readonly" : ""
       }`}
     >
-      {/* 용지 상단 코랄 바 + 게임 라벨 + 회차 */}
+      {/* 용지 상단 코랄 바 + 게임 라벨 */}
       <div className="lotto-slip-header">
         {gameLabel && (
           <span className="lotto-slip-header__label">{gameLabel}</span>
@@ -109,7 +148,10 @@ export default function LottoSlip({
                     key={cellNumber}
                     number={cellNumber}
                     isSelected={selectedNumberSet.has(cellNumber)}
+                    isPendingReplace={pendingReplaceNumber === cellNumber}
                     compact={compact}
+                    interactive={interactive}
+                    onTap={onNumberTap}
                   />
                 );
               })
@@ -136,7 +178,6 @@ export default function LottoSlip({
           )}
         </div>
 
-        {/* 실제 용지 하단 버튼 — 과거 당첨(readonly)은 숨김 */}
         {!readonly && (
           <div className="lotto-slip-actions">
             <SlipActionButton
@@ -153,6 +194,7 @@ export default function LottoSlip({
               label="나의번호등록"
               compact={compact}
               wide
+              onClick={onRegisterMyNumber}
             />
           </div>
         )}

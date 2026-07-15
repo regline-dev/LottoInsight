@@ -46,7 +46,23 @@ body {
   text-align: center;
 }
 
-/* 다음 주(전체 다시 뽑기) ↔ 지난 회차 정보 사이 여백 */
+/* 다음 주 — 번호 변경 안내 */
+.lotto-slip-section__title--guide {
+  max-width: 48rem;
+  margin-inline: auto;
+  margin-bottom: 1em;
+  padding-inline: 0.25rem;
+  font-size: clamp(calc(0.88rem - 1px), 2.8vw, calc(1.05rem - 1px));
+  font-weight: 700;
+  line-height: 1.4;
+  color: #222;
+}
+
+/* 다음 주 ↔ 동시출현 — 여백 타이트하게 */
+.lotto-slip-section--cooccurrence {
+  margin-top: 0.55rem;
+}
+
 .lotto-slip-section--past {
   margin-top: 1.5rem;
 }
@@ -125,8 +141,8 @@ body {
 
 /* 동시 출현 요약 — 7칸 고정 테이블 (안 무너짐) */
 .cooccurrence-summary {
-  margin-top: 0.35rem;
-  padding: 0.55rem 0.15rem 0.6rem;
+  margin-top: 0;
+  padding: 0.4rem 0.15rem 0.45rem;
   border-radius: 0.5rem;
   border: 1px solid rgb(0 0 0 / 8%);
   background: #fafafa;
@@ -135,8 +151,8 @@ body {
 }
 
 .cooccurrence-summary__title {
-  margin: 0 0 0.4rem;
-  font-size: clamp(0.55rem, 2.8cqi, 0.65rem);
+  margin: 0 0 0.3rem;
+  font-size: clamp(0.62rem, 3.2cqi, 0.74rem);
   font-weight: 600;
   color: #666;
   text-align: center;
@@ -300,6 +316,28 @@ body {
   text-align: center;
 }
 
+/* 초기화(빈 번호) — 공간만 유지, 안 보이게 */
+.lotto-ball--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* 모달용 빈 공 — 틀만 보이게 */
+.lotto-ball--empty-outline {
+  visibility: visible;
+  pointer-events: none;
+  border: 1.5px dashed #c4c4c4;
+  box-shadow: none;
+  background: #f3f4f6;
+}
+
+.lotto-number-plus--placeholder {
+  visibility: hidden;
+}
+
 /* ── 용지 본체 ── */
 .lotto-slip-paper {
   display: flex;
@@ -317,12 +355,12 @@ body {
 .lotto-slip-header {
   display: flex;
   align-items: stretch;
-  min-height: 10px;
+  min-height: 1.35rem;
   border-bottom: 1px solid var(--lotto-coral-light);
 }
 
 .lotto-slip-paper--compact .lotto-slip-header {
-  min-height: 6px;
+  min-height: 1.1rem;
 }
 
 .lotto-slip-header__label {
@@ -342,6 +380,8 @@ body {
   min-width: 0.85rem;
   font-size: 0.45rem;
 }
+
+/* 저장됨 배지 삭제됨 — 나의번호는 모달로 */
 
 .lotto-slip-header__bar {
   flex: 1;
@@ -474,6 +514,21 @@ body {
   z-index: 2;
 }
 
+.lotto-mark-cell--interactive {
+  cursor: pointer;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.lotto-mark-cell--interactive:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 1px;
+}
+
 /* bracket과 떨어진 안쪽 배경 */
 .lotto-mark-cell__fill {
   position: absolute;
@@ -484,6 +539,18 @@ body {
   bottom: 10%;
   left: 14%;
   background-color: var(--lotto-coral);
+}
+
+/* 6개일 때 교체 대기 — 하늘색 */
+.lotto-mark-cell--pending .lotto-mark-cell__fill {
+  background-color: #7dd3fc;
+}
+
+.lotto-mark-cell--pending .lotto-mark-cell__num {
+  position: relative;
+  z-index: 1;
+  color: #0c4a6e;
+  font-weight: 700;
 }
 
 .lotto-mark-cell--compact .lotto-mark-cell__fill {
@@ -525,6 +592,7 @@ body {
   padding: 0.25rem 0.15rem;
   border: none;
   white-space: nowrap;
+  cursor: pointer;
   background:
     linear-gradient(var(--lotto-coral), var(--lotto-coral)) left top / 22% 1px
       no-repeat,
@@ -542,11 +610,11 @@ body {
       1px no-repeat,
     linear-gradient(var(--lotto-coral), var(--lotto-coral)) right bottom / 1px
       22% no-repeat;
+  background-color: transparent;
   color: var(--lotto-coral);
   font-size: clamp(0.55rem, 2vw, 0.72rem);
   font-weight: 500;
-  cursor: pointer;
-  background-color: #fff;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .lotto-slip-btn--compact {
@@ -574,6 +642,11 @@ body {
 
 .lotto-slip-btn:hover {
   color: var(--lotto-coral-dark);
+  background-color: #f8e4e4;
+}
+
+.lotto-slip-btn:active {
+  background-color: #f0d0d0;
 }
 
 .lotto-slip-btn--wide {
@@ -598,4 +671,131 @@ body {
     min-height: 2.2rem;
     font-size: 0.7rem;
   }
+}
+
+/* ── 나의번호등록 모달 (body 포탈) ── */
+.my-number-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.my-number-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgb(0 0 0 / 45%);
+  cursor: pointer;
+}
+
+.my-number-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 22rem);
+  padding: 1.1rem 1rem 1rem;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 22%);
+  /* 공 크기 cqi 기준 */
+  container-type: inline-size;
+  container-name: my-number-modal;
+}
+
+.my-number-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.my-number-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #222;
+}
+
+.my-number-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: #666;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.my-number-modal__close:hover {
+  background: #f3f4f6;
+  color: #111;
+}
+
+.my-number-modal__hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #666;
+}
+
+.my-number-modal__balls {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.4rem;
+  border-radius: 0.5rem;
+  background: #fafafa;
+  border: 1px solid rgb(0 0 0 / 6%);
+}
+
+.my-number-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.my-number-modal__btn {
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-number-modal__btn--primary {
+  background: var(--lotto-coral);
+  color: #fff;
+}
+
+.my-number-modal__btn--primary:hover {
+  background: var(--lotto-coral-dark);
+}
+
+.my-number-modal__btn--secondary {
+  background: #fff;
+  border-color: #d4d4d4;
+  color: #333;
+}
+
+.my-number-modal__btn--secondary:hover {
+  border-color: var(--lotto-coral);
+  color: var(--lotto-coral-dark);
+}
+
+.my-number-modal__btn:focus-visible,
+.my-number-modal__close:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
 }
