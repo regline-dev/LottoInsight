@@ -4,7 +4,7 @@ import {
   getLottoBallSphereBackground,
 } from "@/lib/lotto/ballColor";
 
-type LottoBallSize = "main" | "bonus";
+type LottoBallSize = "main" | "bonus" | "compact";
 
 type LottoBallProps = {
   number: number;
@@ -17,10 +17,15 @@ export default function LottoBall({
   size = "main",
 }: LottoBallProps) {
   const ballColor = getLottoBallColor(number);
-  const sizeClass = size === "bonus" ? "lotto-ball--bonus-size" : "lotto-ball";
+  const sizeClass =
+    size === "bonus"
+      ? "lotto-ball--bonus-size"
+      : size === "compact"
+        ? "lotto-ball lotto-ball--compact-size"
+        : "lotto-ball";
 
-  // 본번호 6개 — 3D 구면 그라데이션 + 하이라이트
-  if (size === "main") {
+  // 본번호·요약용 compact — 3D 구면 그라데이션 + 하이라이트
+  if (size === "main" || size === "compact") {
     const sphereStyle: CSSProperties = {
       backgroundColor: ballColor.backgroundColor,
       backgroundImage: getLottoBallSphereBackground(ballColor),

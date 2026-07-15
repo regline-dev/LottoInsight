@@ -9,6 +9,8 @@ type LottoSlipProps = {
   selectedNumbers: number[];
   gameLabel?: string;
   compact?: boolean;
+  /** true — 초기화·자동선택 등 버튼 숨김 (과거 당첨용) */
+  readonly?: boolean;
   onReset?: () => void;
   onAutoSelect?: () => void;
 };
@@ -65,6 +67,7 @@ export default function LottoSlip({
   selectedNumbers,
   gameLabel,
   compact = false,
+  readonly = false,
   onReset,
   onAutoSelect,
 }: LottoSlipProps) {
@@ -72,8 +75,12 @@ export default function LottoSlip({
   const patternPoints = buildPatternPoints(selectedNumbers);
 
   return (
-    <div className={`lotto-slip-paper ${compact ? "lotto-slip-paper--compact" : ""}`}>
-      {/* 용지 상단 코랄 바 + 게임 라벨 */}
+    <div
+      className={`lotto-slip-paper ${compact ? "lotto-slip-paper--compact" : ""} ${
+        readonly ? "lotto-slip-paper--readonly" : ""
+      }`}
+    >
+      {/* 용지 상단 코랄 바 + 게임 라벨 + 회차 */}
       <div className="lotto-slip-header">
         {gameLabel && (
           <span className="lotto-slip-header__label">{gameLabel}</span>
@@ -129,24 +136,26 @@ export default function LottoSlip({
           )}
         </div>
 
-        {/* 실제 용지 하단 버튼 */}
-        <div className="lotto-slip-actions">
-          <SlipActionButton
-            label="초기화"
-            compact={compact}
-            onClick={onReset}
-          />
-          <SlipActionButton
-            label="자동선택"
-            compact={compact}
-            onClick={onAutoSelect}
-          />
-          <SlipActionButton
-            label="나의번호등록"
-            compact={compact}
-            wide
-          />
-        </div>
+        {/* 실제 용지 하단 버튼 — 과거 당첨(readonly)은 숨김 */}
+        {!readonly && (
+          <div className="lotto-slip-actions">
+            <SlipActionButton
+              label="초기화"
+              compact={compact}
+              onClick={onReset}
+            />
+            <SlipActionButton
+              label="자동선택"
+              compact={compact}
+              onClick={onAutoSelect}
+            />
+            <SlipActionButton
+              label="나의번호등록"
+              compact={compact}
+              wide
+            />
+          </div>
+        )}
       </div>
     </div>
   );

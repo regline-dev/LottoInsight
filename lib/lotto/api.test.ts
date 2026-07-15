@@ -3,7 +3,20 @@ import {
   fetchDrawByRound,
   getRecentPastDraws,
   parseLottoApiResponse,
+  parseLt645DrawItem,
 } from "@/lib/lotto/api";
+
+const mockLt645Item = {
+  ltEpsd: 1180,
+  tm1WnNo: 41,
+  tm2WnNo: 28,
+  tm3WnNo: 33,
+  tm4WnNo: 19,
+  tm5WnNo: 12,
+  tm6WnNo: 3,
+  bnsWnNo: 7,
+  ltRflYmd: "20260524",
+};
 
 const mockApiSuccess = {
   returnValue: "success",
@@ -17,6 +30,17 @@ const mockApiSuccess = {
   drwtNo6: 41,
   bnusNo: 7,
 };
+
+describe("parseLt645DrawItem", () => {
+  it("lt645 API → LottoDrawRecord", () => {
+    expect(parseLt645DrawItem(mockLt645Item)).toEqual({
+      drwNo: 1180,
+      drwNoDate: "2026-05-24",
+      mainNumbers: [3, 12, 19, 28, 33, 41],
+      bonusNumber: 7,
+    });
+  });
+});
 
 describe("parseLottoApiResponse", () => {
   it("동행복권 JSON → LottoDrawRecord", () => {
@@ -40,13 +64,15 @@ describe("fetchDrawByRound", () => {
   it("회차 API 호출 후 파싱", async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => mockApiSuccess,
+      text: async () =>
+        JSON.stringify({ data: { list: [mockLt645Item] } }),
     });
 
     const record = await fetchDrawByRound(1180, mockFetch);
     expect(record.drwNo).toBe(1180);
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("drwNo=1180")
+      expect.stringContaining("srchLtEpsd=1180"),
+      expect.objectContaining({ headers: expect.any(Object) })
     );
   });
 

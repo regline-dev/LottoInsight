@@ -33,6 +33,52 @@ body {
 }
 
 /* 로또 용지: 폰 1장 · PC(768px~) 한 줄 5장 (A~E) */
+.lotto-slip-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lotto-slip-section__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--lotto-coral-dark);
+  text-align: center;
+}
+
+/* 다음 주(전체 다시 뽑기) ↔ 지난 회차 정보 사이 여백 */
+.lotto-slip-section--past {
+  margin-top: 1.5rem;
+}
+
+/* 지난 당첨 — 제 N회 + 날짜 한 줄, 검정 */
+.past-draw-heading {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  text-align: center;
+  color: #000;
+}
+
+.past-draw-heading__round {
+  font-size: clamp(0.95rem, 5.5cqi, 1.15rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: #000;
+  letter-spacing: -0.02em;
+}
+
+.past-draw-heading__date {
+  font-size: clamp(0.72rem, 4.2cqi, 0.88rem);
+  font-weight: 500;
+  line-height: 1.2;
+  color: #000;
+  letter-spacing: 0.01em;
+}
+
 .lotto-slip-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -70,6 +116,122 @@ body {
   /* 공·글자 크기 = 이 열(게임) 너비 기준 */
   container-type: inline-size;
   container-name: lotto-game;
+}
+
+/* 지난 당첨 — 회차↔공, 공↔용지 간격만 넓힘 */
+.lotto-slip-column--past {
+  gap: 0.85rem;
+}
+
+/* 동시 출현 요약 — 7칸 고정 테이블 (안 무너짐) */
+.cooccurrence-summary {
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.15rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(0 0 0 / 8%);
+  background: #fafafa;
+  color: #222;
+  overflow: hidden;
+}
+
+.cooccurrence-summary__title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(0.55rem, 2.8cqi, 0.65rem);
+  font-weight: 600;
+  color: #666;
+  text-align: center;
+}
+
+.cooccurrence-summary__table {
+  width: 95%;
+  margin-inline: auto;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* 칸 너비 미리 고정 — 합 100% */
+.cooccurrence-summary__col--base {
+  width: 16%;
+}
+
+.cooccurrence-summary__col--arrow-up,
+.cooccurrence-summary__col--arrow-down {
+  width: 5%;
+}
+
+.cooccurrence-summary__col--high-ball,
+.cooccurrence-summary__col--low-ball {
+  width: 16%;
+}
+
+.cooccurrence-summary__col--high-rate,
+.cooccurrence-summary__col--low-rate {
+  width: 14%;
+}
+
+.cooccurrence-summary__tr {
+  height: 1px; /* td 높이 = 공 높이에 맞춤 */
+}
+
+.cooccurrence-summary__cell {
+  padding: 0.1rem 0;
+  vertical-align: middle;
+  text-align: center;
+  overflow: hidden;
+}
+
+.cooccurrence-summary__cell--base,
+.cooccurrence-summary__cell--high-ball,
+.cooccurrence-summary__cell--low-ball {
+  padding-inline: 0;
+}
+
+.cooccurrence-summary__cell--arrow-up,
+.cooccurrence-summary__cell--arrow-down {
+  font-size: clamp(0.55rem, 3cqi, 0.65rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cooccurrence-summary__cell--arrow-up {
+  color: #b42318;
+}
+
+.cooccurrence-summary__cell--arrow-down {
+  color: #175cd3;
+}
+
+.cooccurrence-summary__cell--high-rate {
+  color: #b42318;
+  font-size: clamp(0.48rem, 2.6cqi, 0.58rem);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cooccurrence-summary__cell--low-rate {
+  color: #175cd3;
+  font-size: clamp(0.48rem, 2.6cqi, 0.58rem);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cooccurrence-summary__cell--empty {
+  color: #888;
+  font-size: clamp(0.55rem, 2.8cqi, 0.65rem);
+  text-align: left;
+  padding-left: 0.25rem;
+}
+
+/* 동시 출현 테이블 공만 — 위 당첨볼(.lotto-number-row)과 별개 */
+.cooccurrence-summary__cell--base .lotto-ball,
+.cooccurrence-summary__cell--high-ball .lotto-ball,
+.cooccurrence-summary__cell--low-ball .lotto-ball {
+  display: flex;
+  width: 70%;
+  max-width: 70%;
+  margin-inline: auto;
+  aspect-ratio: 1;
+  font-size: clamp(0.48rem, 5.2cqi, 0.62rem);
 }
 
 /* 당첨번호 6 + + + 보너스 — 한 줄, 적당히 모음 */
@@ -422,6 +584,14 @@ body {
   .lotto-slip-header__label {
     min-width: 1.5rem;
     font-size: 0.75rem;
+  }
+
+  .past-draw-heading__round {
+    font-size: 1rem;
+  }
+
+  .past-draw-heading__date {
+    font-size: 0.85rem;
   }
 
   .lotto-slip-btn {

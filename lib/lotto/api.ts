@@ -1,13 +1,44 @@
 import type { LottoDraw } from "@/lib/lotto/types";
 
-/** 동행복권 회차별 당첨 API */
+/** 동행복권 회차별 당첨 API (2024~ 내부 JSON) */
+export const DH_LOTTERY_LT645_URL =
+  "https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do";
+
+/** @deprecated 구 API — IP/봇 차단될 수 있음 */
 export const DH_LOTTERY_DRAW_URL =
   "https://www.dhlottery.co.kr/common.do?method=getLottoNumber&drwNo=";
+
+/** 동행복권 AJAX 요청 헤더 */
+export const DH_LOTTERY_HEADERS: HeadersInit = {
+  Accept: "application/json, text/javascript, */*; q=0.01",
+  Referer: "https://www.dhlottery.co.kr/",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "X-Requested-With": "XMLHttpRequest",
+};
 
 /** API 원본 + 회차·날짜 메타 */
 export type LottoDrawRecord = LottoDraw & {
   drwNo: number;
   drwNoDate: string;
+};
+
+type Lt645DrawItem = {
+  ltEpsd: number;
+  tm1WnNo: number;
+  tm2WnNo: number;
+  tm3WnNo: number;
+  tm4WnNo: number;
+  tm5WnNo: number;
+  tm6WnNo: number;
+  bnsWnNo: number;
+  ltRflYmd: string;
+};
+
+type Lt645ApiResponse = {
+  data?: {
+    list?: Lt645DrawItem[];
+  };
 };
 
 type DhLottoApiResponse = {
@@ -28,7 +59,34 @@ export type FetchFn = (
   init?: RequestInit
 ) => Promise<Response>;
 
-/** 동행복권 API JSON → 앱 타입 */
+/** YYYYMMDD → YYYY-MM-DD */
+export function formatLtRflYmd(ltRflYmd: string): string {
+  if (!/^\d{8}$/.test(ltRflYmd)) {
+    return ltRflYmd;
+  }
+  return `${ltRflYmd.slice(0, 4)}-${ltRflYmd.slice(4, 6)}-${ltRflYmd.slice(6, 8)}`;
+}
+
+/** lt645 API 1건 → LottoDrawRecord */
+export function parseLt645DrawItem(item: Lt645DrawItem): LottoDrawRecord {
+  const mainNumbers = [
+    item.tm1WnNo,
+    item.tm2WnNo,
+    item.tm3WnNo,
+    item.tm4WnNo,
+    item.tm5WnNo,
+    item.tm6WnNo,
+  ].sort((a, b) => a - b);
+
+  return {
+    drwNo: item.ltEpsd,
+    drwNoDate: formatLtRflYmd(item.ltRflYmd),
+    mainNumbers,
+    bonusNumber: item.bnsWnNo,
+  };
+}
+
+/** 구 getLottoNumber JSON → LottoDrawRecord */
 export function parseLottoApiResponse(raw: DhLottoApiResponse): LottoDrawRecord {
   if (raw.returnValue !== "success") {
     throw new Error(`회차 ${raw.drwNo ?? "?"} 당첨 데이터를 가져오지 못했습니다.`);
@@ -51,6 +109,40 @@ export function parseLottoApiResponse(raw: DhLottoApiResponse): LottoDrawRecord 
   };
 }
 
+async function fetchLt645Json(
+  url: string,
+  fetchFn: FetchFn
+): Promise<Lt645ApiResponse> {
+  const response = await fetchFn(url, { headers: DH_LOTTERY_HEADERS });
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`동행복권 API HTTP ${response.status}`);
+  }
+  if (text.trimStart().startsWith("<")) {
+    throw new Error(
+      "동행복권 접속이 차단되었습니다. 브라우저에서 dhlottery.co.kr 접속 후 다시 시도하세요."
+    );
+  }
+
+  return JSON.parse(text) as Lt645ApiResponse;
+}
+
+function extractLt645Draw(
+  json: Lt645ApiResponse,
+  expectedRound?: number
+): LottoDrawRecord {
+  const item = json.data?.list?.[0];
+  if (!item) {
+    throw new Error(
+      expectedRound
+        ? `회차 ${expectedRound} 데이터가 없습니다.`
+        : "당첨 데이터가 없습니다."
+    );
+  }
+  return parseLt645DrawItem(item);
+}
+
 /** 특정 회차 당첨 번호 fetch */
 export async function fetchDrawByRound(
   drwNo: number,
@@ -60,45 +152,17 @@ export async function fetchDrawByRound(
     throw new Error(`유효하지 않은 회차입니다: ${drwNo}`);
   }
 
-  const response = await fetchFn(`${DH_LOTTERY_DRAW_URL}${drwNo}`);
-
-  if (!response.ok) {
-    throw new Error(`동행복권 API HTTP ${response.status} (회차 ${drwNo})`);
-  }
-
-  const raw = (await response.json()) as DhLottoApiResponse;
-  return parseLottoApiResponse(raw);
+  const url = `${DH_LOTTERY_LT645_URL}?srchLtEpsd=${drwNo}`;
+  const json = await fetchLt645Json(url, fetchFn);
+  return extractLt645Draw(json, drwNo);
 }
 
-/** 최신 회차 번호 추정 — 1회(2002-12-07) 이후 주 1회 */
-export function estimateLatestDrawRound(
-  now: Date = new Date()
-): number {
-  const firstDrawDate = new Date("2002-12-07T00:00:00+09:00");
-  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const weeksSinceFirst = Math.floor(
-    (now.getTime() - firstDrawDate.getTime()) / msPerWeek
-  );
-  return Math.max(1, weeksSinceFirst + 1);
-}
-
-/** 추정값부터 올려가며 존재하는 최신 회차 확인 */
+/** 최신 완료 회차 (파라미터 없이 호출 → 최신 1건) */
 export async function fetchLatestDrawRound(
   fetchFn: FetchFn = fetch
 ): Promise<number> {
-  let candidateRound = estimateLatestDrawRound();
-
-  // 아직 추첨 전 회차면 returnValue fail → 아래로 탐색
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    try {
-      const record = await fetchDrawByRound(candidateRound, fetchFn);
-      return record.drwNo;
-    } catch {
-      candidateRound -= 1;
-    }
-  }
-
-  throw new Error("최신 회차를 확인하지 못했습니다.");
+  const json = await fetchLt645Json(DH_LOTTERY_LT645_URL, fetchFn);
+  return extractLt645Draw(json).drwNo;
 }
 
 /**
