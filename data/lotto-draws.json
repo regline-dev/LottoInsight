@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-07-15T04:26:48.358Z",
-  "count": 1232,
+  "updatedAt": "2026-07-19T08:03:45.746Z",
+  "count": 1233,
   "draws": [
     {
       "drwNo": 1,
@@ -16017,6 +16017,19 @@
         36
       ],
       "bonusNumber": 3
+    },
+    {
+      "drwNo": 1233,
+      "drwNoDate": "2026-07-18",
+      "mainNumbers": [
+        2,
+        7,
+        20,
+        25,
+        37,
+        40
+      ],
+      "bonusNumber": 29
     }
   ]
 }
